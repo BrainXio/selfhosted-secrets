@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-manage_infisical.py - Production-ready with docker compose fallback.
+manage_infisical.py - Production-ready with auto-dir creation.
 """
 
 import os
@@ -14,6 +14,7 @@ import shutil
 APP_LABEL = "infisical-tailnet"
 ENV_PATH = ".env"
 CADDYFILE_PATH = "Caddyfile"
+TAILSCALE_DIR = "tailscale-state"
 
 PROMPT_VARS = ["TS_AUTHKEY", "CLOUDFLARE_API_TOKEN", "DOMAIN"]
 
@@ -39,7 +40,6 @@ except ImportError:
     except ImportError:
         HAS_KEYRING = False
 
-# Detect docker compose command
 def get_compose_cmd():
     if shutil.which("docker") and subprocess.run(["docker", "compose", "version"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0:
         return ["docker", "compose"]
@@ -51,7 +51,7 @@ def get_compose_cmd():
 
 COMPOSE_CMD = get_compose_cmd()
 
-# Keyring helpers (unchanged)
+# Keyring helpers unchanged
 def keyring_set(key, value):
     if 'secretstorage' in globals():
         import secretstorage
@@ -112,6 +112,8 @@ def generate_caddyfile(domain):
     print(f"Caddyfile generated for {domain}.")
 
 def main():
+    os.makedirs(TAILSCALE_DIR, exist_ok=True)
+
     env = load_secrets()
     changed = False
 
@@ -146,7 +148,7 @@ def main():
         print("All files up to date.")
 
     if len(sys.argv) > 1:
-        subprocess.run(COMPOSE_CMD + sys.argv[1:], check=True)
+        subprocess.run(COMPOSE_CMD + ["up", "-d"] + sys.argv[1:], check=True)
 
 if __name__ == "__main__":
     main()
