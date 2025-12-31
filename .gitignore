@@ -1,0 +1,14 @@
+# Secrets and config
+.env
+
+# Generated config
+Caddyfile
+
+# Tailscale persisted state
+tailscale-state/
+
+# Docker volumes (optional, if not committed)
+pg_data/
+redis_data/
+caddy_data/
+caddy_config/
