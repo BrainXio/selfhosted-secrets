@@ -27,6 +27,9 @@ DEFAULTS = {
 GLOBAL_CADDY = """
 {
     acme_dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+    servers {
+        client_resolvers 1.1.1.1 8.8.8.8
+    }
 }
 """
 
