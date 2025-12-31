@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-manage_infisical.py - Production-ready Infisical manager
+manage_infisical.py - Simple working version (reverted)
 """
 
 import os
@@ -99,6 +99,7 @@ def generate_caddyfile(domain):
     content = f"""
 {domain} {{
     reverse_proxy localhost:8080
+
     tls {{
         dns cloudflare {{env.CLOUDFLARE_API_TOKEN}}
     }}
