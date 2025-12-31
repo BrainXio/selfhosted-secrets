@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-manage_infisical.py - Production-ready with auto-dir creation.
+manage_infisical.py - Production-ready Infisical deployment manager
 """
 
 import os
@@ -24,15 +24,6 @@ DEFAULTS = {
     "REDIS_URL": "redis://localhost:6379",
 }
 
-GLOBAL_CADDY = """
-{
-    acme_dns cloudflare {env.CLOUDFLARE_API_TOKEN}
-    servers {
-        client_resolvers 1.1.1.1 8.8.8.8
-    }
-}
-"""
-
 try:
     import secretstorage
     HAS_KEYRING = True
@@ -44,7 +35,9 @@ except ImportError:
         HAS_KEYRING = False
 
 def get_compose_cmd():
-    if shutil.which("docker") and subprocess.run(["docker", "compose", "version"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0:
+    if shutil.which("docker") and subprocess.run(["docker", "compose", "version"],
+                                                 stdout=subprocess.DEVNULL,
+                                                 stderr=subprocess.DEVNULL).returncode == 0:
         return ["docker", "compose"]
     elif shutil.which("docker-compose"):
         return ["docker-compose"]
@@ -54,13 +47,13 @@ def get_compose_cmd():
 
 COMPOSE_CMD = get_compose_cmd()
 
-# Keyring helpers unchanged
 def keyring_set(key, value):
     if 'secretstorage' in globals():
         import secretstorage
         conn = secretstorage.dbus_init()
         coll = secretstorage.get_default_collection(conn)
-        if coll.is_locked(): coll.unlock()
+        if coll.is_locked():
+            coll.unlock()
         attrs = {"application": APP_LABEL, "key": key}
         coll.create_item(f"{APP_LABEL} {key}", attrs, value.encode(), replace=True)
     else:
@@ -104,10 +97,17 @@ def save_secrets(env):
     print(".env written.")
 
 def generate_caddyfile(domain):
-    content = GLOBAL_CADDY + f"""
+    content = f"""
+{{
+    acme_dns cloudflare {{env.CLOUDFLARE_API_TOKEN}}
+}}
 
 {domain} {{
     reverse_proxy localhost:8080
+
+    tls {{
+        resolvers 1.1.1.1 8.8.8.8
+    }}
 }}
 """
     with open(CADDYFILE_PATH, "w") as f:
@@ -144,15 +144,17 @@ def main():
     env["SITE_URL"] = f"https://{env['DOMAIN']}"
     env["DB_CONNECTION_URI"] = f"postgres://{env['POSTGRES_USER']}:{env['POSTGRES_PASSWORD']}@localhost:5432/{env['POSTGRES_DB']}"
 
-    if changed:
-        save_secrets(env)
+    # Always ensure Caddyfile exists with current domain
+    if changed or not os.path.exists(CADDYFILE_PATH):
         generate_caddyfile(env["DOMAIN"])
+        save_secrets(env)
     else:
         print("All files up to date.")
 
     if len(sys.argv) > 1:
         if sys.argv[1] in ["up", "down"]:
-            subprocess.run(COMPOSE_CMD + ["up", "-d"] if sys.argv[1] == "up" else COMPOSE_CMD + ["down"], check=True)
+            cmd = COMPOSE_CMD + (["up", "-d"] if sys.argv[1] == "up" else ["down"])
+            subprocess.run(cmd, check=True)
         else:
             subprocess.run(COMPOSE_CMD + sys.argv[1:], check=True)
 
