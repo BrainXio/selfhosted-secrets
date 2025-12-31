@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-manage_infisical.py - Production-ready Infisical deployment manager
+manage_infisical.py - Production-ready Infisical manager
 """
 
 import os
@@ -42,7 +42,7 @@ def get_compose_cmd():
     elif shutil.which("docker-compose"):
         return ["docker-compose"]
     else:
-        print("Error: Neither 'docker compose' nor 'docker-compose' found.")
+        print("Error: No docker compose found.")
         sys.exit(1)
 
 COMPOSE_CMD = get_compose_cmd()
@@ -52,8 +52,7 @@ def keyring_set(key, value):
         import secretstorage
         conn = secretstorage.dbus_init()
         coll = secretstorage.get_default_collection(conn)
-        if coll.is_locked():
-            coll.unlock()
+        if coll.is_locked(): coll.unlock()
         attrs = {"application": APP_LABEL, "key": key}
         coll.create_item(f"{APP_LABEL} {key}", attrs, value.encode(), replace=True)
     else:
@@ -98,16 +97,10 @@ def save_secrets(env):
 
 def generate_caddyfile(domain):
     content = f"""
-{{
-    acme_dns cloudflare {{env.CLOUDFLARE_API_TOKEN}}
-}}
-
 {domain} {{
     reverse_proxy localhost:8080
-
     tls {{
         dns cloudflare {{env.CLOUDFLARE_API_TOKEN}}
-        resolvers 1.1.1.1 8.8.8.8
     }}
 }}
 """
@@ -145,10 +138,9 @@ def main():
     env["SITE_URL"] = f"https://{env['DOMAIN']}"
     env["DB_CONNECTION_URI"] = f"postgres://{env['POSTGRES_USER']}:{env['POSTGRES_PASSWORD']}@localhost:5432/{env['POSTGRES_DB']}"
 
-    # Always ensure Caddyfile exists with current domain
     if changed or not os.path.exists(CADDYFILE_PATH):
-        generate_caddyfile(env["DOMAIN"])
         save_secrets(env)
+        generate_caddyfile(env["DOMAIN"])
     else:
         print("All files up to date.")
 

@@ -1,13 +1,14 @@
-# docker-compose.yml
+version: "3.8"
+
 services:
   tailscale:
     image: tailscale/tailscale:latest
     container_name: tailscale-infi
     hostname: infisical-server
-    env_file: .env
     environment:
       - TS_AUTHKEY=${TS_AUTHKEY}
       - TS_STATE_DIR=/var/lib/tailscale
+      - TS_ACCEPT_DNS=true
     volumes:
       - ./tailscale-state:/var/lib/tailscale
     cap_add:
@@ -30,45 +31,41 @@ services:
     restart: unless-stopped
 
   backend:
+    image: infisical/infisical:latest
     container_name: infisical-backend
-    restart: unless-stopped
+    network_mode: service:tailscale
+    env_file: .env
+    environment:
+      - NODE_ENV=production
+      - SITE_URL=${SITE_URL}
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_started
-    image: infisical/infisical:latest
-    pull_policy: always
-    env_file: .env
-    environment:
-      - NODE_ENV=production
-      - SITE_URL=${SITE_URL:-https://your-custom-domain.com}
-    network_mode: service:tailscale
+    restart: unless-stopped
 
   redis:
-    image: redis
+    image: redis:latest
     container_name: infisical-redis
-    env_file: .env
-    restart: always
-    environment:
-      - ALLOW_EMPTY_PASSWORD=yes
+    network_mode: service:tailscale
     volumes:
       - redis_data:/data
-    network_mode: service:tailscale
+    restart: unless-stopped
 
   db:
-    container_name: infisical-db
     image: postgres:14-alpine
-    restart: always
+    container_name: infisical-db
+    network_mode: service:tailscale
     env_file: .env
     volumes:
       - pg_data:/var/lib/postgresql/data
-    network_mode: service:tailscale
     healthcheck:
-      test: "pg_isready --username=${POSTGRES_USER} && psql --username=${POSTGRES_USER} --list"
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 5s
-      timeout: 10s
+      timeout: 5s
       retries: 10
+    restart: unless-stopped
 
 volumes:
   pg_data:
