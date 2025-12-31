@@ -148,7 +148,10 @@ def main():
         print("All files up to date.")
 
     if len(sys.argv) > 1:
-        subprocess.run(COMPOSE_CMD + ["up", "-d"] + sys.argv[1:], check=True)
+        if sys.argv[1] in ["up", "down"]:
+            subprocess.run(COMPOSE_CMD + ["up", "-d"] if sys.argv[1] == "up" else COMPOSE_CMD + ["down"], check=True)
+        else:
+            subprocess.run(COMPOSE_CMD + sys.argv[1:], check=True)
 
 if __name__ == "__main__":
     main()
