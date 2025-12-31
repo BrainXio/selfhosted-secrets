@@ -106,6 +106,7 @@ def generate_caddyfile(domain):
     reverse_proxy localhost:8080
 
     tls {{
+        dns cloudflare {{env.CLOUDFLARE_API_TOKEN}}
         resolvers 1.1.1.1 8.8.8.8
     }}
 }}
