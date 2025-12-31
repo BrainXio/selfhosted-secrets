@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-manage_infisical.py - Production-ready secret manager + Caddyfile generator.
+manage_infisical.py - Production-ready with docker compose fallback.
 """
 
 import os
@@ -9,6 +9,7 @@ import getpass
 import secrets
 import base64
 import subprocess
+import shutil
 
 APP_LABEL = "infisical-tailnet"
 ENV_PATH = ".env"
@@ -38,6 +39,19 @@ except ImportError:
     except ImportError:
         HAS_KEYRING = False
 
+# Detect docker compose command
+def get_compose_cmd():
+    if shutil.which("docker") and subprocess.run(["docker", "compose", "version"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0:
+        return ["docker", "compose"]
+    elif shutil.which("docker-compose"):
+        return ["docker-compose"]
+    else:
+        print("Error: Neither 'docker compose' nor 'docker-compose' found.")
+        sys.exit(1)
+
+COMPOSE_CMD = get_compose_cmd()
+
+# Keyring helpers (unchanged)
 def keyring_set(key, value):
     if 'secretstorage' in globals():
         import secretstorage
@@ -132,7 +146,7 @@ def main():
         print("All files up to date.")
 
     if len(sys.argv) > 1:
-        subprocess.run(["docker", "compose"] + sys.argv[1:], check=True)
+        subprocess.run(COMPOSE_CMD + sys.argv[1:], check=True)
 
 if __name__ == "__main__":
     main()
